@@ -7,13 +7,17 @@ from pyzbar.pyzbar import decode
 # 1. 設定：GASのウェブアプリURL
 GAS_URL = "https://script.google.com/macros/s/AKfycbxL4-4MWX1mF4TGJVeASeorEODDPq16T85WuSc77T5oxw1qJluo6agbPyzRFnu1g_GBpA/exec"
 
-st.title("衣類データ登録アプリ 📱")
+st.title("衣類データ登録アプリ")
 
-# --- 新機能：サーバー側でのバーコード解析 ---
-st.subheader("🔍 バーコード読み取り")
+# --- 新機能：アプリに「記憶（メモリ）」を持たせる ---
+# 複数バーコードを覚えておくためのリストを準備します
+if 'barcodes' not in st.session_state:
+    st.session_state.barcodes = []
+
+st.subheader("🔍 バーコード読み取り（複数対応）")
+st.write("サイズ違いなど、複数のバーコードを続けて撮影できます。")
+
 barcode_pic = st.camera_input("📷 バーコードを接写して撮影してください", key="barcode_camera")
-
-item_name_value = "" # 初期値は空
 
 if barcode_pic is not None:
     # 撮影された画像をPythonサーバー上で開く
@@ -22,14 +26,28 @@ if barcode_pic is not None:
     decoded_objects = decode(image)
     
     if decoded_objects:
-        # 解析成功：バーコードの番号を取り出す
-        item_name_value = decoded_objects[0].data.decode("utf-8")
-        st.success(f"✅ 読み取り成功: {item_name_value}")
+        # 読み取ったすべてのバーコードをチェック
+        for obj in decoded_objects:
+            code = obj.data.decode("utf-8")
+            # まだリストにない新しい番号なら追加する
+            if code not in st.session_state.barcodes:
+                st.session_state.barcodes.append(code)
+                st.success(f"✅ 追加しました: {code}")
+            else:
+                st.info(f"💡 既に登録済みの番号です: {code}")
     else:
         st.error("❌ バーコードが見つかりません。ピントを合わせて再度撮影してください。")
 
-# アイテム名の入力欄（解析が成功すれば、自動的に番号が入ります）
-item_name = st.text_input("アイテム名（手入力も可）", value=item_name_value)
+# リストに入っている複数のバーコードを「カンマ(,)」でつないで一つの文字列にする
+joined_barcodes = ", ".join(st.session_state.barcodes)
+
+# アイテム名の入力欄（複数のバーコードが自動で入ります）
+item_name = st.text_input("アイテム名（手入力・修正も可）", value=joined_barcodes)
+
+# 間違えて読み取ってしまった時のためのリセットボタン
+if st.button("🗑️ バーコードの読み取りをやり直す"):
+    st.session_state.barcodes = []
+    st.rerun() # 画面を更新してリセットを反映する
 
 st.divider() # 区切り線
 
@@ -62,8 +80,11 @@ if st.button("💾 データを保存する"):
                     "fileLabels": [convert_image(pic) for pic in label_pics]
                 }
                 response = requests.post(GAS_URL, json=payload)
+                
                 if response.status_code == 200:
                     st.success("🎉 スプレッドシートへの保存が完了しました！")
+                    # ★重要：保存に成功したら、次回の入力のためにバーコードの記憶を消去する
+                    st.session_state.barcodes = []
                 else:
                     st.error(f"❌ 通信エラー（コード: {response.status_code}）")
             except Exception as e:
