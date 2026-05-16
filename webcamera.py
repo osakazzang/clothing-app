@@ -54,7 +54,7 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # ==========================================
 # 1. アプリのメインロジック
 # ==========================================
-GAS_URL = "https://script.google.com/macros/s/AKfycbwNrmeONTiaba4hZSnmCwLAeuysJV_eeQqoHpJo2bDur8JI_sqSNpuzsEMLpxAbKgYOIw/exec"
+GAS_URL = st.secrets["GAS_URL"]
 
 st.title("👕 衣類データ登録")
 
