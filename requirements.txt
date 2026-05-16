@@ -2,3 +2,5 @@ streamlit
 requests
 Pillow
 pyzbar
+opencv-python-headless
+numpy
