@@ -55,7 +55,7 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # ==========================================
 GAS_URL = st.secrets["GAS_URL"]
 # ★ 追加: セキュリティトークン（secrets.tomlで設定します）
-SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_123")
+SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_$0907$")
 
 st.title("👕 衣類データ登録")
 
