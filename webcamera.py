@@ -58,7 +58,6 @@ SECRET_TOKEN = st.secrets["SECRET_TOKEN"]
 
 st.title("👕 衣類データ登録")
 
-# 全体のフォームリセット用キーと、バーコード専用のリセットキーを分ける
 if 'barcodes' not in st.session_state:
     st.session_state.barcodes = []
 if 'form_key' not in st.session_state:
@@ -68,12 +67,12 @@ if 'barcode_key' not in st.session_state:
 
 current_key = st.session_state.form_key
 current_barcode_key = st.session_state.barcode_key
+text_input_key = f"item_name_{current_key}"
 
 # --- セクション1: バーコード ---
 st.markdown("### 🔍 バーコード・アイテム名")
 st.caption("バーコードから15〜20cm離して撮影するとピントが合いやすいです。")
 
-# ★ バーコード専用のキーを使用
 barcode_pic = st.camera_input("📷 バーコードを撮影", key=f"barcode_camera_{current_barcode_key}")
 
 if barcode_pic is not None:
@@ -98,22 +97,28 @@ if barcode_pic is not None:
             if code not in st.session_state.barcodes:
                 st.session_state.barcodes.append(code)
                 st.toast(f"✅ 追加: {code}") 
+                
+                # ★ 変更: テキスト入力欄の内部メモリ(Session State)を直接更新
+                current_text = st.session_state.get(text_input_key, "")
+                if current_text and code not in current_text:
+                    st.session_state[text_input_key] = current_text + ", " + code
+                elif not current_text:
+                    st.session_state[text_input_key] = code
             else:
                 st.toast(f"💡 登録済み: {code}")
         
-        # ★ オートクリア機能: 読み取り成功時、1.5秒待ってから自動でカメラをリセット
         time.sleep(1.5)
         st.session_state.barcode_key += 1
         st.rerun()
     else:
         st.error("❌ 読み取れませんでした。少し離して再撮影してください。")
-        # ★ オートクリア機能: 失敗時も、2秒待ってから自動でカメラをリセット
         time.sleep(2.0)
         st.session_state.barcode_key += 1
         st.rerun()
 
+# 初回表示時のデフォルト値設定
 joined_barcodes = ", ".join(st.session_state.barcodes)
-item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=f"item_name_{current_key}")
+item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=text_input_key)
 
 col1, col2 = st.columns([2, 1])
 with col2:
