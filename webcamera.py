@@ -43,33 +43,22 @@ hide_st_style = """
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
             
-            /* 🗑️ リセットボタン (Secondary) のデザイン: グレー背景に赤文字 */
-            div.stButton > button[kind="secondary"] {
-                background-color: #E5E5EA !important;
-                color: #FF3B30 !important;
-                border-radius: 10px !important;
-                height: 3.5em !important;
-                font-weight: bold !important;
-                width: 100% !important;
-                border: none !important;
-            }
-            
-            /* メインタイトルを小さくスッキリと */
+            /* メインタイトルを小さくスッキリと、文字色を白色に変更 */
             .main-title {
                 text-align: center;
                 font-size: 1.5rem;
                 font-weight: bold;
-                color: #333;
+                color: white; /* 白文字に変更 */
                 margin-bottom: 5px;
             }
             
-            /* セクション見出し(h3)のデザイン */
+            /* セクション見出し(h3)のデザイン: サイズを従来の50% (0.55rem) に変更 */
             h3 {
                 color: #007AFF;
                 border-bottom: 2px solid #007AFF;
                 padding-bottom: 5px;
                 margin-top: 15px;
-                font-size: 1.1rem;
+                font-size: 0.55rem; /* 半分のサイズに変更 */
             }
             </style>
             """
@@ -144,7 +133,7 @@ joined_barcodes = ", ".join(st.session_state.barcodes)
 item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=text_input_key)
 
 # --- セクション2: 写真撮影 ---
-st.markdown("### 📸 状態の撮影")
+st.markdown("### 📸 衣類の形状")
 col_front, col_back = st.columns(2)
 with col_front:
     front_pic = st.file_uploader("👕 本体", type=['png', 'jpg', 'jpeg'], key=f"front_upload_{current_key}")
@@ -174,67 +163,56 @@ def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     return None
 
 # ==========================================
-# ★ アプリ下部: 送信 & リセットボタン エリア
+# ★ アプリ下部: 送信ボタン エリア (クリアボタン削除、幅100%に変更)
 # ==========================================
-st.markdown("<br>", unsafe_allow_html=True) # 少し余白を開ける
-col_reset, col_submit = st.columns([1, 2]) # 1:2の比率でボタンを配置
+st.markdown("<br>", unsafe_allow_html=True) 
 
-with col_reset:
-    # リセットボタン (Secondary: グレー背景・赤文字)
-    if st.button("🗑️ クリア", type="secondary"):
-        st.session_state.barcodes = []
-        st.session_state.form_key += 1
-        st.session_state.barcode_key += 1
-        st.rerun()
-
-with col_submit:
-    # 送信ボタン (Primary: 青背景・白文字)
-    if st.button("💾 保存して送信", type="primary"):
-        if not item_name or not front_pic or not back_pic or not label_pics:
-            st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
-        else:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+if st.button("💾 サーバーへ送信", type="primary"):
+    if not item_name or not front_pic or not back_pic or not label_pics:
+        st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
+    else:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        try:
+            status_text.info("📦 画像を最適化しています... (1/2)")
+            progress_bar.progress(25)
             
-            try:
-                status_text.info("📦 画像を最適化しています... (1/2)")
-                progress_bar.progress(25)
-                
-                payload = {
-                    "secret_token": SECRET_TOKEN,
-                    "itemName": item_name,
-                    "fileFront": compress_image(front_pic),
-                    "fileBack": compress_image(back_pic),
-                    "fileLabels": [compress_image(pic) for pic in label_pics]
-                }
-                
-                progress_bar.progress(50)
-                status_text.info("🚀 クラウドへデータを送信中... (2/2)")
-                
-                response = requests.post(GAS_URL, json=payload)
-                progress_bar.progress(90)
-                
-                if response.status_code == 200:
-                    result_data = response.json()
-                    if result_data.get("status") == "error":
-                        status_text.error(f"❌ サーバーエラー: {result_data.get('message')}")
-                        progress_bar.empty()
-                    else:
-                        progress_bar.progress(100)
-                        status_text.success("🎉 DBへの保存が完了しました！")
-                        st.balloons()
-                        st.toast("保存完了！", icon="🎊")
-                        
-                        st.info("🔄 次のアイテムを登録するため、3秒後に画面をリセットします...")
-                        time.sleep(3)
-                        
-                        st.session_state.barcodes = []
-                        st.session_state.form_key += 1
-                        st.session_state.barcode_key += 1
-                        st.rerun()
-                else:
-                    status_text.error(f"❌ 通信エラー（コード: {response.status_code}）")
+            payload = {
+                "secret_token": SECRET_TOKEN,
+                "itemName": item_name,
+                "fileFront": compress_image(front_pic),
+                "fileBack": compress_image(back_pic),
+                "fileLabels": [compress_image(pic) for pic in label_pics]
+            }
+            
+            progress_bar.progress(50)
+            status_text.info("🚀 クラウドへデータを送信中... (2/2)")
+            
+            response = requests.post(GAS_URL, json=payload)
+            progress_bar.progress(90)
+            
+            if response.status_code == 200:
+                result_data = response.json()
+                if result_data.get("status") == "error":
+                    status_text.error(f"❌ サーバーエラー: {result_data.get('message')}")
                     progress_bar.empty()
-            except Exception as e:
-                status_text.error(f"❌ エラーが発生しました: {e}")
+                else:
+                    progress_bar.progress(100)
+                    status_text.success("🎉 DBへの保存が完了しました！")
+                    st.balloons()
+                    st.toast("保存完了！", icon="🎊")
+                    
+                    st.info("🔄 次のアイテムを登録するため、3秒後に画面をリセットします...")
+                    time.sleep(3)
+                    
+                    st.session_state.barcodes = []
+                    st.session_state.form_key += 1
+                    st.session_state.barcode_key += 1
+                    st.rerun()
+            else:
+                status_text.error(f"❌ 通信エラー（コード: {response.status_code}）")
                 progress_bar.empty()
+        except Exception as e:
+            status_text.error(f"❌ エラーが発生しました: {e}")
+            progress_bar.empty()
