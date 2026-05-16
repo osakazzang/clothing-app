@@ -52,13 +52,13 @@ hide_st_style = """
                 margin-bottom: 5px;
             }
             
-            /* セクション見出し(h3)のデザイン: サイズを従来の50% (0.8rem程度) に変更 */
+            /* セクション見出し(h3)のデザイン*/
             h3 {
                 color: #007AFF !important;
                 border-bottom: 2px solid #007AFF !important;
                 padding-bottom: 5px !important;
                 margin-top: 15px !important;
-                font-size: 0.8rem !important; 
+                font-size: 1.3rem !important; 
             }
             </style>
             """
