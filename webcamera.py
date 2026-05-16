@@ -5,7 +5,7 @@ from PIL import Image
 from pyzbar.pyzbar import decode
 
 # 1. 設定：GASのウェブアプリURL
-GAS_URL = "https://script.google.com/macros/s/AKfycbxL4-4MWX1mF4TGJVeASeorEODDPq16T85WuSc77T5oxw1qJluo6agbPyzRFnu1g_GBpA/exec"
+GAS_URL = "https://script.google.com/macros/s/AKfycbwNrmeONTiaba4hZSnmCwLAeuysJV_eeQqoHpJo2bDur8JI_sqSNpuzsEMLpxAbKgYOIw/exec"
 
 st.title("衣類データ登録アプリ")
 
