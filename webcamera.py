@@ -54,21 +54,25 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 1. アプリのメインロジック
 # ==========================================
 GAS_URL = st.secrets["GAS_URL"]
-
-# ★ 変更: 予備のパスワードを完全に削除しました。
-# これにより、必ず secrets.toml に設定されたパスワードのみを使用します。
 SECRET_TOKEN = st.secrets["SECRET_TOKEN"]
 
 st.title("👕 衣類データ登録")
 
+# ★ 追加: ウィジェットを完全にリセットするためのキー(状態)管理
 if 'barcodes' not in st.session_state:
     st.session_state.barcodes = []
+if 'form_key' not in st.session_state:
+    st.session_state.form_key = 0
+
+# 現在のキープレフィックスを変数に入れておく
+current_key = st.session_state.form_key
 
 # --- セクション1: バーコード ---
 st.markdown("### 🔍 バーコード・アイテム名")
 st.caption("バーコードから15〜20cm離して撮影するとピントが合いやすいです。")
 
-barcode_pic = st.camera_input("📷 バーコードを撮影", key="barcode_camera")
+# ★ 変更: keyに form_key を追加
+barcode_pic = st.camera_input("📷 バーコードを撮影", key=f"barcode_camera_{current_key}")
 
 if barcode_pic is not None:
     pil_image = Image.open(barcode_pic).convert('RGB')
@@ -98,25 +102,31 @@ if barcode_pic is not None:
         st.error("❌ 読み取れませんでした。少し離して再撮影してください。")
 
 joined_barcodes = ", ".join(st.session_state.barcodes)
-item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes)
+# ★ 変更: keyに form_key を追加
+item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=f"item_name_{current_key}")
 
 col1, col2 = st.columns([2, 1])
 with col2:
     if st.button("🗑️ リセット"):
+        # ★ 変更: データを消してキーを更新することで完全初期化
         st.session_state.barcodes = []
+        st.session_state.form_key += 1
         st.rerun()
 
 # --- セクション2: 写真撮影 ---
 st.markdown("### 📸 状態の撮影")
 col_front, col_back = st.columns(2)
 with col_front:
-    front_pic = st.camera_input("👕 本体", key="front_camera")
+    # ★ 変更: keyに form_key を追加
+    front_pic = st.camera_input("👕 本体", key=f"front_camera_{current_key}")
 with col_back:
-    back_pic = st.camera_input("👕 パーツ", key="back_camera")
+    # ★ 変更: keyに form_key を追加
+    back_pic = st.camera_input("👕 パーツ", key=f"back_camera_{current_key}")
 
 # --- セクション3: ラベル ---
 st.markdown("### 🏷️ ケアラベル")
-label_pics = st.file_uploader("写真ライブラリから複数選択", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
+# ★ 変更: keyに form_key を追加
+label_pics = st.file_uploader("写真ライブラリから複数選択", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'], key=f"label_pics_{current_key}")
 
 def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     if uploaded_file is not None:
@@ -177,7 +187,9 @@ if st.button("💾 データを保存して送信", type="primary"):
                     st.info("🔄 次のアイテムを登録するため、3秒後に画面をリセットします...")
                     time.sleep(3)
                     
+                    # ★ 変更: 保存成功後もキーを更新して完全に初期化
                     st.session_state.barcodes = []
+                    st.session_state.form_key += 1
                     st.rerun()
             else:
                 status_text.error(f"❌ 通信エラー（コード: {response.status_code}）")
