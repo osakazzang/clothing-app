@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from pyzbar.pyzbar import decode
 import time
-import io # 画像圧縮用に追加 (이미지 압축용으로 추가)
+import io
 
 # ==========================================
 # 0. ページ設定とUIカスタマイズ
@@ -54,8 +54,7 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 1. アプリのメインロジック
 # ==========================================
 GAS_URL = st.secrets["GAS_URL"]
-# ★ 追加: セキュリティトークン（secrets.tomlで設定します）
-SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_$0656$")
+SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_123")
 
 st.title("👕 衣類データ登録")
 
@@ -116,23 +115,17 @@ with col_back:
 st.markdown("### 🏷️ ケアラベル")
 label_pics = st.file_uploader("写真ライブラリから複数選択", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
 
-# ★ 変更: 画像を自動的に縮小・圧縮する関数
 def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     if uploaded_file is not None:
         try:
-            # 画像を開く
             img = Image.open(uploaded_file)
-            # JPEG保存のためにRGBモードに変換
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            # アスペクト比を維持してリサイズ（最大1000px）
             img.thumbnail(max_size)
             
-            # メモリ上でJPEGとして圧縮保存
             buffer = io.BytesIO()
             img.save(buffer, format="JPEG", quality=quality)
             
-            # Base64エンコード
             base64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
             return {"mimeType": "image/jpeg", "bytes": base64_data}
         except Exception as e:
@@ -146,29 +139,52 @@ if st.button("💾 データを保存して送信", type="primary"):
     if not item_name or not front_pic or not back_pic or not label_pics:
         st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
     else:
-        with st.spinner("🚀 データを圧縮してクラウドへ送信中..."):
-            try:
-                payload = {
-                    "secret_token": SECRET_TOKEN, # ★ 追加: トークンを送信
-                    "itemName": item_name,
-                    "fileFront": compress_image(front_pic), # ★ 変更: 圧縮関数を使用
-                    "fileBack": compress_image(back_pic),
-                    "fileLabels": [compress_image(pic) for pic in label_pics]
-                }
-                response = requests.post(GAS_URL, json=payload)
-                
-                if response.status_code == 200:
-                    result_data = response.json()
-                    # GAS側でトークンエラー弾かれた場合の処理
-                    if result_data.get("status") == "error":
-                        st.error(f"❌ サーバーエラー: {result_data.get('message')}")
-                    else:
-                        st.success("🎉 DBへの保存が完了しました！次のアイテムを登録できます。")
-                        st.toast("保存完了！", icon="🎊")
-                        st.session_state.barcodes = []
-                        time.sleep(2)
-                        st.rerun()
+        # UI改善: プログレスバーとステータス表示用のプレースホルダーを作成
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        try:
+            # --- ステップ1: 画像圧縮 ---
+            status_text.info("📦 画像を最適化しています... (1/2)")
+            progress_bar.progress(25)
+            
+            payload = {
+                "secret_token": SECRET_TOKEN,
+                "itemName": item_name,
+                "fileFront": compress_image(front_pic),
+                "fileBack": compress_image(back_pic),
+                "fileLabels": [compress_image(pic) for pic in label_pics]
+            }
+            
+            # --- ステップ2: クラウド送信 ---
+            progress_bar.progress(50)
+            status_text.info("🚀 クラウドへデータを送信中... (2/2)")
+            
+            response = requests.post(GAS_URL, json=payload)
+            progress_bar.progress(90)
+            
+            if response.status_code == 200:
+                result_data = response.json()
+                if result_data.get("status") == "error":
+                    status_text.error(f"❌ サーバーエラー: {result_data.get('message')}")
+                    progress_bar.empty()
                 else:
-                    st.error(f"❌ 通信エラー（コード: {response.status_code}）")
-            except Exception as e:
-                st.error(f"❌ エラーが発生しました: {e}")
+                    # --- 完了処理 ---
+                    progress_bar.progress(100)
+                    status_text.success("🎉 DBへの保存が完了しました！")
+                    st.balloons() # 視覚的な成功フィードバック（風船アニメーション）
+                    st.toast("保存完了！", icon="🎊")
+                    
+                    # ユーザーに画面がリセットされることを案内
+                    st.info("🔄 次のアイテムを登録するため、3秒後に画面をリセットします...")
+                    time.sleep(3)
+                    
+                    # セッション状態をクリアして画面をリフレッシュ（リセット）
+                    st.session_state.barcodes = []
+                    st.rerun()
+            else:
+                status_text.error(f"❌ 通信エラー（コード: {response.status_code}）")
+                progress_bar.empty()
+        except Exception as e:
+            status_text.error(f"❌ エラーが発生しました: {e}")
+            progress_bar.empty()
