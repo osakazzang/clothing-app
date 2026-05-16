@@ -52,14 +52,14 @@ hide_st_style = """
                 margin-bottom: 5px;
             }
             
-            /* セクション見出し(h3)のデザイン: サイズを従来の50% (0.55rem) に変更 */
-            h3 {
-                color: #007AFF;
-                border-bottom: 2px solid #007AFF;
-                padding-bottom: 5px;
-                margin-top: 15px;
-                font-size: 0.55rem; /* 半分のサイズに変更 */
-            }
+/* セクション見出し(h3)のデザイン */
+h3 {
+    color: #007AFF !important;
+    border-bottom: 2px solid #007AFF !important;
+    padding-bottom: 5px !important;
+    margin-top: 15px !important;
+    font-size: 0.8rem !important; /* ← 이 숫자로 크기를 조절합니다 */
+}
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
