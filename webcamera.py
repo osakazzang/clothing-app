@@ -72,7 +72,6 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 GAS_URL = st.secrets["GAS_URL"]
 SECRET_TOKEN = st.secrets["SECRET_TOKEN"]
 
-# ★ 変更: 巨大な st.title をやめて、コンパクトなHTMLタイトルに変更
 st.markdown("<div class='main-title'>👕 衣類データ登録</div>", unsafe_allow_html=True)
 
 if 'barcodes' not in st.session_state:
@@ -88,11 +87,10 @@ text_input_key = f"item_name_{current_key}"
 
 # --- セクション1: バーコード ---
 st.markdown("### 🔍 バーコード・アイテム名")
+st.caption("ボタンを押してカメラを起動し、バーコードを撮影してください。")
 
-# ★ 変更: 背面カメラへの切り替え方法を赤字で強調案内
-st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 5px;'>📸 15〜20cm離して撮影してください。<br><span style='color: #D9534F; font-weight: bold;'>⚠️ 背面カメラを使うには、カメラ右上の「切替(↔️)」を押してください。</span></p>", unsafe_allow_html=True)
-
-barcode_pic = st.camera_input("📷 バーコードを撮影", key=f"barcode_camera_{current_barcode_key}", label_visibility="collapsed")
+# ★ 変更: バーコードもアップローダー（写真撮影）に統一
+barcode_pic = st.file_uploader("📷 バーコード画像", type=['png', 'jpg', 'jpeg'], key=f"barcode_upload_{current_barcode_key}")
 
 if barcode_pic is not None:
     pil_image = Image.open(barcode_pic).convert('RGB')
@@ -129,7 +127,7 @@ if barcode_pic is not None:
         st.session_state.barcode_key += 1
         st.rerun()
     else:
-        st.error("❌ 読み取れませんでした。少し離して再撮影してください。")
+        st.error("❌ 読み取れませんでした。別の写真で再撮影してください。")
         time.sleep(2.0)
         st.session_state.barcode_key += 1
         st.rerun()
@@ -149,13 +147,13 @@ with col2:
 st.markdown("### 📸 状態の撮影")
 col_front, col_back = st.columns(2)
 with col_front:
-    front_pic = st.camera_input("👕 本体", key=f"front_camera_{current_key}")
+    front_pic = st.file_uploader("👕 本体", type=['png', 'jpg', 'jpeg'], key=f"front_upload_{current_key}")
 with col_back:
-    back_pic = st.camera_input("👕 パーツ", key=f"back_camera_{current_key}")
+    back_pic = st.file_uploader("👕 パーツ", type=['png', 'jpg', 'jpeg'], key=f"back_upload_{current_key}")
 
 # --- セクション3: ラベル ---
 st.markdown("### 🏷️ ケアラベル")
-label_pics = st.file_uploader("写真ライブラリから複数選択", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'], key=f"label_pics_{current_key}")
+label_pics = st.file_uploader("複数選択可（カメラ / ライブラリ）", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'], key=f"label_pics_{current_key}")
 
 def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     if uploaded_file is not None:
