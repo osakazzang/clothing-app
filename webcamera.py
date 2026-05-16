@@ -25,6 +25,12 @@ hide_st_style = """
             footer {visibility: hidden;}    
             header {visibility: hidden;}    
             
+            /* スマホの画面上部の無駄な余白を極限まで削る */
+            .block-container {
+                padding-top: 1.5rem !important;
+                padding-bottom: 1rem !important;
+            }
+            
             div.stButton > button:first-child {
                 background-color: #007AFF;
                 color: white;
@@ -39,12 +45,22 @@ hide_st_style = """
                 background-color: #0056b3;
             }
             
+            /* メインタイトルを小さくスッキリと */
+            .main-title {
+                text-align: center;
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 5px;
+            }
+            
+            /* セクション見出し(h3)のデザイン */
             h3 {
                 color: #007AFF;
                 border-bottom: 2px solid #007AFF;
                 padding-bottom: 5px;
-                margin-top: 30px;
-                font-size: 1.2rem;
+                margin-top: 15px;
+                font-size: 1.1rem;
             }
             </style>
             """
@@ -56,7 +72,8 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 GAS_URL = st.secrets["GAS_URL"]
 SECRET_TOKEN = st.secrets["SECRET_TOKEN"]
 
-st.title("👕 衣類データ登録")
+# ★ 変更: 巨大な st.title をやめて、コンパクトなHTMLタイトルに変更
+st.markdown("<div class='main-title'>👕 衣類データ登録</div>", unsafe_allow_html=True)
 
 if 'barcodes' not in st.session_state:
     st.session_state.barcodes = []
@@ -71,9 +88,11 @@ text_input_key = f"item_name_{current_key}"
 
 # --- セクション1: バーコード ---
 st.markdown("### 🔍 バーコード・アイテム名")
-st.caption("バーコードから15〜20cm離して撮影するとピントが合いやすいです。")
 
-barcode_pic = st.camera_input("📷 バーコードを撮影", key=f"barcode_camera_{current_barcode_key}")
+# ★ 変更: 背面カメラへの切り替え方法を赤字で強調案内
+st.markdown("<p style='font-size: 13px; color: #666; margin-bottom: 5px;'>📸 15〜20cm離して撮影してください。<br><span style='color: #D9534F; font-weight: bold;'>⚠️ 背面カメラを使うには、カメラ右上の「切替(↔️)」を押してください。</span></p>", unsafe_allow_html=True)
+
+barcode_pic = st.camera_input("📷 バーコードを撮影", key=f"barcode_camera_{current_barcode_key}", label_visibility="collapsed")
 
 if barcode_pic is not None:
     pil_image = Image.open(barcode_pic).convert('RGB')
@@ -98,7 +117,6 @@ if barcode_pic is not None:
                 st.session_state.barcodes.append(code)
                 st.toast(f"✅ 追加: {code}") 
                 
-                # ★ 変更: テキスト入力欄の内部メモリ(Session State)を直接更新
                 current_text = st.session_state.get(text_input_key, "")
                 if current_text and code not in current_text:
                     st.session_state[text_input_key] = current_text + ", " + code
@@ -116,7 +134,6 @@ if barcode_pic is not None:
         st.session_state.barcode_key += 1
         st.rerun()
 
-# 初回表示時のデフォルト値設定
 joined_barcodes = ", ".join(st.session_state.barcodes)
 item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=text_input_key)
 
