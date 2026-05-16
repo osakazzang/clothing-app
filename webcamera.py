@@ -54,7 +54,10 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 1. アプリのメインロジック
 # ==========================================
 GAS_URL = st.secrets["GAS_URL"]
-SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_$0656$")
+
+# ★ 変更: 予備のパスワードを完全に削除しました。
+# これにより、必ず secrets.toml に設定されたパスワードのみを使用します。
+SECRET_TOKEN = st.secrets["SECRET_TOKEN"]
 
 st.title("👕 衣類データ登録")
 
@@ -139,12 +142,10 @@ if st.button("💾 データを保存して送信", type="primary"):
     if not item_name or not front_pic or not back_pic or not label_pics:
         st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
     else:
-        # UI改善: プログレスバーとステータス表示用のプレースホルダーを作成
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         try:
-            # --- ステップ1: 画像圧縮 ---
             status_text.info("📦 画像を最適化しています... (1/2)")
             progress_bar.progress(25)
             
@@ -156,7 +157,6 @@ if st.button("💾 データを保存して送信", type="primary"):
                 "fileLabels": [compress_image(pic) for pic in label_pics]
             }
             
-            # --- ステップ2: クラウド送信 ---
             progress_bar.progress(50)
             status_text.info("🚀 クラウドへデータを送信中... (2/2)")
             
@@ -169,17 +169,14 @@ if st.button("💾 データを保存して送信", type="primary"):
                     status_text.error(f"❌ サーバーエラー: {result_data.get('message')}")
                     progress_bar.empty()
                 else:
-                    # --- 完了処理 ---
                     progress_bar.progress(100)
                     status_text.success("🎉 DBへの保存が完了しました！")
-                    st.balloons() # 視覚的な成功フィードバック（風船アニメーション）
+                    st.balloons()
                     st.toast("保存完了！", icon="🎊")
                     
-                    # ユーザーに画面がリセットされることを案内
                     st.info("🔄 次のアイテムを登録するため、3秒後に画面をリセットします...")
                     time.sleep(3)
                     
-                    # セッション状態をクリアして画面をリフレッシュ（リセット）
                     st.session_state.barcodes = []
                     st.rerun()
             else:
