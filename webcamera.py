@@ -7,7 +7,7 @@ from pyzbar.pyzbar import decode
 # 1. 設定：GASのウェブアプリURL
 GAS_URL = "https://script.google.com/macros/s/AKfycbwNrmeONTiaba4hZSnmCwLAeuysJV_eeQqoHpJo2bDur8JI_sqSNpuzsEMLpxAbKgYOIw/exec"
 
-st.title("衣類データ登録アプリ")
+st.title("衣類データ登録App")
 
 # --- 新機能：アプリに「記憶（メモリ）」を持たせる ---
 # 複数バーコードを覚えておくためのリストを準備します
@@ -53,8 +53,8 @@ st.divider() # 区切り線
 
 # --- これまで通りの写真撮影 ---
 st.subheader("1. 状態の撮影")
-front_pic = st.camera_input("📷 前面の写真を撮影", key="front_camera")
-back_pic = st.camera_input("📷 背面の写真を撮影", key="back_camera")
+front_pic = st.camera_input("📷 本体の写真を撮影", key="front_camera")
+back_pic = st.camera_input("📷 パーツの写真を撮影", key="back_camera")
 
 st.subheader("2. ケアラベルの選択")
 label_pics = st.file_uploader("📁 スマホの写真ライブラリから選択（複数可）", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
@@ -82,7 +82,7 @@ if st.button("💾 データを保存する"):
                 response = requests.post(GAS_URL, json=payload)
                 
                 if response.status_code == 200:
-                    st.success("🎉 スプレッドシートへの保存が完了しました！")
+                    st.success("🎉 DBへの保存が完了しました！")
                     # ★重要：保存に成功したら、次回の入力のためにバーコードの記憶を消去する
                     st.session_state.barcodes = []
                 else:
