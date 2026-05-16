@@ -6,9 +6,10 @@ import numpy as np
 from PIL import Image
 from pyzbar.pyzbar import decode
 import time
+import io # 画像圧縮用に追加 (이미지 압축용으로 추가)
 
 # ==========================================
-# 0. ページ設定とUIカスタマイズ（一番最初に書く必要があります）
+# 0. ページ設定とUIカスタマイズ
 # ==========================================
 st.set_page_config(
     page_title="衣類データ登録",
@@ -17,14 +18,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CSSによる強制的なデザイン変更（ネイティブアプリ風） ---
+# --- CSSによる強制的なデザイン変更 ---
 hide_st_style = """
             <style>
-            #MainMenu {visibility: hidden;} /* 右上のメニューを隠す */
-            footer {visibility: hidden;}    /* 下のロゴを隠す */
-            header {visibility: hidden;}    /* 上の空白を消す */
+            #MainMenu {visibility: hidden;} 
+            footer {visibility: hidden;}    
+            header {visibility: hidden;}    
             
-            /* ボタンをスマホで押しやすく、スタイリッシュに */
             div.stButton > button:first-child {
                 background-color: #007AFF;
                 color: white;
@@ -39,7 +39,6 @@ hide_st_style = """
                 background-color: #0056b3;
             }
             
-            /* セクション見出しのデザイン */
             h3 {
                 color: #007AFF;
                 border-bottom: 2px solid #007AFF;
@@ -55,6 +54,8 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 1. アプリのメインロジック
 # ==========================================
 GAS_URL = st.secrets["GAS_URL"]
+# ★ 追加: セキュリティトークン（secrets.tomlで設定します）
+SECRET_TOKEN = st.secrets.get("SECRET_TOKEN", "my_secret_token_123")
 
 st.title("👕 衣類データ登録")
 
@@ -88,7 +89,7 @@ if barcode_pic is not None:
             code = obj.data.decode("utf-8")
             if code not in st.session_state.barcodes:
                 st.session_state.barcodes.append(code)
-                st.toast(f"✅ 追加: {code}") # スマホ風のトースト通知
+                st.toast(f"✅ 追加: {code}") 
             else:
                 st.toast(f"💡 登録済み: {code}")
     else:
@@ -97,7 +98,6 @@ if barcode_pic is not None:
 joined_barcodes = ", ".join(st.session_state.barcodes)
 item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes)
 
-# やり直しボタンを少し小さめに配置
 col1, col2 = st.columns([2, 1])
 with col2:
     if st.button("🗑️ リセット"):
@@ -116,35 +116,58 @@ with col_back:
 st.markdown("### 🏷️ ケアラベル")
 label_pics = st.file_uploader("写真ライブラリから複数選択", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
 
-def convert_image(uploaded_file):
+# ★ 変更: 画像を自動的に縮小・圧縮する関数
+def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     if uploaded_file is not None:
-        bytes_data = uploaded_file.getvalue()
-        base64_data = base64.b64encode(bytes_data).decode('utf-8')
-        return {"mimeType": uploaded_file.type, "bytes": base64_data}
+        try:
+            # 画像を開く
+            img = Image.open(uploaded_file)
+            # JPEG保存のためにRGBモードに変換
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            # アスペクト比を維持してリサイズ（最大1000px）
+            img.thumbnail(max_size)
+            
+            # メモリ上でJPEGとして圧縮保存
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=quality)
+            
+            # Base64エンコード
+            base64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return {"mimeType": "image/jpeg", "bytes": base64_data}
+        except Exception as e:
+            st.error(f"⚠️ 画像処理エラー: {e}")
+            return None
     return None
 
 # --- 送信ボタン ---
-st.write("") # スペース空け
+st.write("")
 if st.button("💾 データを保存して送信", type="primary"):
     if not item_name or not front_pic or not back_pic or not label_pics:
         st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
     else:
-        with st.spinner("🚀 クラウドへ送信中..."):
+        with st.spinner("🚀 データを圧縮してクラウドへ送信中..."):
             try:
                 payload = {
+                    "secret_token": SECRET_TOKEN, # ★ 追加: トークンを送信
                     "itemName": item_name,
-                    "fileFront": convert_image(front_pic),
-                    "fileBack": convert_image(back_pic),
-                    "fileLabels": [convert_image(pic) for pic in label_pics]
+                    "fileFront": compress_image(front_pic), # ★ 変更: 圧縮関数を使用
+                    "fileBack": compress_image(back_pic),
+                    "fileLabels": [compress_image(pic) for pic in label_pics]
                 }
                 response = requests.post(GAS_URL, json=payload)
                 
                 if response.status_code == 200:
-                    st.success("🎉 DBへの保存が完了しました！次のアイテムを登録できます。")
-                    st.toast("保存完了！", icon="🎊")
-                    st.session_state.barcodes = []
-                    time.sleep(2) # 2秒待ってから画面をリセット
-                    st.rerun()
+                    result_data = response.json()
+                    # GAS側でトークンエラー弾かれた場合の処理
+                    if result_data.get("status") == "error":
+                        st.error(f"❌ サーバーエラー: {result_data.get('message')}")
+                    else:
+                        st.success("🎉 DBへの保存が完了しました！次のアイテムを登録できます。")
+                        st.toast("保存完了！", icon="🎊")
+                        st.session_state.barcodes = []
+                        time.sleep(2)
+                        st.rerun()
                 else:
                     st.error(f"❌ 通信エラー（コード: {response.status_code}）")
             except Exception as e:
