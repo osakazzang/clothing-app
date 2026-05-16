@@ -48,18 +48,18 @@ hide_st_style = """
                 text-align: center;
                 font-size: 1.5rem;
                 font-weight: bold;
-                color: white; /* 白文字に変更 */
+                color: white; 
                 margin-bottom: 5px;
             }
             
-/* セクション見出し(h3)のデザイン */
-h3 {
-    color: #007AFF !important;
-    border-bottom: 2px solid #007AFF !important;
-    padding-bottom: 5px !important;
-    margin-top: 15px !important;
-    font-size: 1.5rem !important; /* ← 이 숫자로 크기를 조절합니다 */
-}
+            /* セクション見出し(h3)のデザイン: サイズを従来の50% (0.8rem程度) に変更 */
+            h3 {
+                color: #007AFF !important;
+                border-bottom: 2px solid #007AFF !important;
+                padding-bottom: 5px !important;
+                margin-top: 15px !important;
+                font-size: 0.8rem !important; 
+            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -133,7 +133,7 @@ joined_barcodes = ", ".join(st.session_state.barcodes)
 item_name = st.text_input("アイテム名 (自動入力 / 編集可)", value=joined_barcodes, key=text_input_key)
 
 # --- セクション2: 写真撮影 ---
-st.markdown("### 📸 衣類の形状")
+st.markdown("### 📸 状態の撮影")
 col_front, col_back = st.columns(2)
 with col_front:
     front_pic = st.file_uploader("👕 本体", type=['png', 'jpg', 'jpeg'], key=f"front_upload_{current_key}")
@@ -163,11 +163,11 @@ def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
     return None
 
 # ==========================================
-# ★ アプリ下部: 送信ボタン エリア (クリアボタン削除、幅100%に変更)
+# ★ アプリ下部: 送信ボタン エリア (安定したエラー処理を追加)
 # ==========================================
 st.markdown("<br>", unsafe_allow_html=True) 
 
-if st.button("💾 サーバーへ送信", type="primary"):
+if st.button("💾 保存して送信", type="primary"):
     if not item_name or not front_pic or not back_pic or not label_pics:
         st.error("⚠️ すべての項目（アイテム名、本体、パーツ、ラベル）を埋めてください。")
     else:
@@ -187,9 +187,10 @@ if st.button("💾 サーバーへ送信", type="primary"):
             }
             
             progress_bar.progress(50)
-            status_text.info("🚀 クラウドへデータを送信中... (2/2)")
+            status_text.info("🚀 クラウドへデータを送信中... 最大15秒かかります (2/2)")
             
-            response = requests.post(GAS_URL, json=payload)
+            # ★ 変更点: timeout(15秒)を設定し、サーバーからの応答を待つ上限を決定
+            response = requests.post(GAS_URL, json=payload, timeout=15)
             progress_bar.progress(90)
             
             if response.status_code == 200:
@@ -211,8 +212,19 @@ if st.button("💾 サーバーへ送信", type="primary"):
                     st.session_state.barcode_key += 1
                     st.rerun()
             else:
-                status_text.error(f"❌ 通信エラー（コード: {response.status_code}）")
+                status_text.error(f"❌ 通信エラー（コード: {response.status_code}）: サーバーに問題が発生しました。")
                 progress_bar.empty()
+                
+        # ★ 変更点: 細分化されたエラー処理 (例外処理) を追加
+        except requests.exceptions.Timeout:
+            status_text.error("❌ タイムアウトエラー: サーバーからの応答がありません。ネットワーク環境を確認して再試行してください。")
+            progress_bar.empty()
+        except requests.exceptions.ConnectionError:
+            status_text.error("❌ ネットワークエラー: インターネットに接続されていません。接続を確認してください。")
+            progress_bar.empty()
+        except requests.exceptions.RequestException as e:
+            status_text.error(f"❌ 通信エラーが発生しました: {e}")
+            progress_bar.empty()
         except Exception as e:
-            status_text.error(f"❌ エラーが発生しました: {e}")
+            status_text.error(f"❌ 予期せぬエラーが発生しました: {e}")
             progress_bar.empty()
