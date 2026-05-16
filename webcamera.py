@@ -58,7 +58,7 @@ h3 {
     border-bottom: 2px solid #007AFF !important;
     padding-bottom: 5px !important;
     margin-top: 15px !important;
-    font-size: 0.8rem !important; /* ← 이 숫자로 크기를 조절합니다 */
+    font-size: 1.5rem !important; /* ← 이 숫자로 크기를 조절합니다 */
 }
             </style>
             """
