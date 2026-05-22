@@ -144,19 +144,20 @@ with col_back:
 st.markdown("### 🏷️ ケアラベル")
 label_pics = st.file_uploader("複数選択可（カメラ / ライブラリ）", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'], key=f"label_pics_{current_key}")
 
-def compress_image(uploaded_file, max_size=(1000, 1000), quality=80):
+def compress_image(uploaded_file, max_size=(600, 600), quality=65):
     if uploaded_file is not None:
         try:
             img = Image.open(uploaded_file)
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            img.thumbnail(max_size)
+            img.thumbnail(max_size, Image.Resampling.LANCZOS) # 리샘플링 필터 적용(화질 보존)
             
             buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=quality)
+            # JPEG 대신 WEBP로 변환하면 용량을 30% 더 줄일 수 있습니다. (구글 드라이브 호환됨)
+            img.save(buffer, format="WEBP", quality=quality) 
             
             base64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            return {"mimeType": "image/jpeg", "bytes": base64_data}
+            return {"mimeType": "image/webp", "bytes": base64_data}
         except Exception as e:
             st.error(f"⚠️ 画像処理エラー: {e}")
             return None
